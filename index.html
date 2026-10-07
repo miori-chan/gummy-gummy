@@ -912,7 +912,6 @@
             
             document.getElementById('text-line').innerText = storeInfo.line;
             document.getElementById('link-line').href = storeInfo.lineLink || "https://line.me";
-
             document.getElementById('music-title').innerText = storeInfo.musicTitle || "Cozy Lofi BGM";
             const bgmPlayer = document.getElementById('bgm-player');
             if (storeInfo.musicUrl && bgmPlayer.src !== storeInfo.musicUrl) {
@@ -1229,7 +1228,6 @@
             if (subTab === 'categories') {
                 renderAdminCategoriesList();
             } else if (subTab === 'info') {
-                // Populate info form values
                 document.getElementById('admin-info-title').value = storeInfo.title;
                 document.getElementById('admin-info-slogan').value = storeInfo.slogan;
                 document.getElementById('admin-info-fb').value = storeInfo.fb;
@@ -1260,168 +1258,120 @@
             renderCategoryChips();
             renderAdminCategorySelect();
             renderAdminCategoriesList();
-            showToast("เพิ่มหมวดหมู่สำเร็จ! 🏷️");
+            showToast("เพิ่มหมวดหมู่สำเร็จ!");
         }
         function renderAdminCategoriesList() {
-            const list = document.getElementById('admin-categories-list');
-            if (!list) return;
-            list.innerHTML = '';
-            categories.forEach(cat => {
-                const item = document.createElement('div');
-                item.className = "bg-warm-cream p-3 rounded-xl border border-soft-blush flex items-center justify-between gap-3";
-                item.innerHTML = `
-                    <div class="flex items-center gap-2 flex-1">
-                        <input type="text" value="${cat.name}" onchange="updateCategoryName('${cat.id}', this.value)" class="text-xs px-2.5 py-1.5 rounded-lg border border-soft-blush bg-white w-full max-w-xs focus:outline-none focus:border-blush-dark">
-                        <span class="text-[10px] text-muted-brown">ID: ${cat.id}</span>
+            const listContainer = document.getElementById('admin-categories-list');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            categories.forEach((cat, index) => {
+                listContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-soft-blush">
+                        <div class="text-xs">
+                            <span class="font-bold text-soft-brown">${cat.name}</span>
+                            <span class="text-muted-brown ml-2">(ID: ${cat.id})</span>
+                        </div>
+                        ${categories.length > 1 ? `<button onclick="deleteCategory('${cat.id}')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded-lg">ลบ</button>` : ''}
                     </div>
-                    ${categories.length > 1 ? `<button onclick="deleteCategory('${cat.id}')" class="px-3 py-1 bg-red-100 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-bold transition-colors">ลบ</button>` : ''}
                 `;
-                list.appendChild(item);
             });
         }
-        function updateCategoryName(id, newName) {
-            const cat = categories.find(c => c.id === id);
-            if (cat) {
-                cat.name = newName.trim();
+        function deleteCategory(catId) {
+            if (confirm("ต้องการลบหมวดหมู่นี้ใช่หรือไม่?")) {
+                categories = categories.filter(c => c.id !== catId);
                 localStorage.setItem('miori_categories', JSON.stringify(categories));
-                renderCategoryChips();
-                renderAdminCategorySelect();
-                showToast("อัปเดตชื่อหมวดหมู่เรียบร้อย");
-            }
-        }
-        function deleteCategory(id) {
-            if (confirm("ต้องการลบหมวดหมู่นี้ใช่หรือไม่? สินค้าในหมวดหมู่นี้จะถูกย้ายไปหมวดหมู่แรก")) {
-                categories = categories.filter(c => c.id !== id);
-                const fallbackId = categories.length > 0 ? categories[0].id : 'general';
-                products.forEach(p => {
-                    if (p.category === id) p.category = fallbackId;
-                });
-                localStorage.setItem('miori_categories', JSON.stringify(categories));
-                localStorage.setItem('miori_products', JSON.stringify(products));
-                if (currentCategory === id) currentCategory = 'all';
                 renderCategoryChips();
                 renderAdminCategorySelect();
                 renderAdminCategoriesList();
-                renderProducts();
-                showToast("ลบหมวดหมู่เรียบร้อยแล้ว");
+                showToast("ลบหมวดหมู่เรียบร้อย");
             }
         }
-        // --- LOGO & BANNER UPLOAD FUNCTIONS ---
-        function uploadSiteLogo() {
-            const fileInput = document.getElementById('admin-logo-file');
-            if (fileInput.files && fileInput.files[0]) {
+        // --- ADMIN PRODUCT MANAGEMENT ---
+        let uploadedProductImageTemp = "";
+        function previewImageFile(input, previewId) {
+            if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    localStorage.setItem('miori_logo', e.target.result);
-                    applyAllSavedSettings();
-                    showToast("เปลี่ยนรูปโลโก้สำเร็จ! ☁️");
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                showToast("⚠️ กรุณาเลือกไฟล์รูปโลโก้ก่อน");
+                    uploadedProductImageTemp = e.target.result;
+                    const preview = document.getElementById(previewId);
+                    preview.src = uploadedProductImageTemp;
+                    preview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
             }
         }
-        function uploadBannerImage(type) {
-            const fileInput = document.getElementById(`admin-banner-${type}-file`);
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    localStorage.setItem(`miori_banner_${type}`, e.target.result);
-                    applyAllSavedSettings();
-                    showToast(`เปลี่ยนแบนเนอร์หน้า ${type} สำเร็จ! 🖼️`);
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                showToast("⚠️ กรุณาเลือกไฟล์รูปแบนเนอร์ก่อน");
-            }
-        }
-        // --- IMAGE FILE HELPER (Base64 Reader for Mobile Gallery Upload) ---
-        function previewImageFile(input, previewElementId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById(previewElementId);
-                    img.src = e.target.result;
-                    img.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        // --- ADMIN PRODUCT CRUD ---
         function handleSaveProduct(e) {
             e.preventDefault();
             const id = document.getElementById('admin-prod-id').value;
             const name = document.getElementById('admin-prod-name').value;
             const category = document.getElementById('admin-prod-category').value;
-            const price = parseFloat(document.getElementById('admin-prod-price').value);
+            const price = Number(document.getElementById('admin-prod-price').value);
             const badge = document.getElementById('admin-prod-badge').value;
-            const desc = document.getElementById('admin-prod-desc').value;
             const btnText = document.getElementById('admin-prod-btn-text').value;
             const btnLink = document.getElementById('admin-prod-btn-link').value;
-            const fileInput = document.getElementById('admin-prod-file');
-            let imageSrc = "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=500&q=80";
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    saveProductData(id, name, category, price, badge, desc, btnText, btnLink, ev.target.result);
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                const existingProd = products.find(p => p.id == id);
-                if (existingProd) imageSrc = existingProd.img;
-                saveProductData(id, name, category, price, badge, desc, btnText, btnLink, imageSrc);
+            const desc = document.getElementById('admin-prod-desc').value;
+            
+            let img = uploadedProductImageTemp;
+            if (!img && !id) {
+                img = "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=500&q=80";
             }
-        }
-        function saveProductData(id, name, category, price, badge, desc, btnText, btnLink, imageSrc) {
+            
             if (id) {
-                const index = products.findIndex(p => p.id == id);
-                if (index !== -1) {
-                    products[index] = { ...products[index], name, category, price, badge, desc, btnText, btnLink, img: imageSrc };
+                // Edit existing
+                const prod = products.find(p => p.id == id);
+                if (prod) {
+                    prod.name = name;
+                    prod.category = category;
+                    prod.price = price;
+                    prod.badge = badge;
+                    prod.btnText = btnText;
+                    prod.btnLink = btnLink;
+                    prod.desc = desc;
+                    if (img) prod.img = img;
                 }
+                showToast("อัปเดตข้อมูลสินค้าสำเร็จ!");
             } else {
-                const newProduct = {
+                // Add new
+                const newProd = {
                     id: Date.now(),
                     name,
                     category,
                     price,
                     rating: 5.0,
-                    badge: badge || "New Item ✨",
-                    desc,
-                    btnText: btnText || "สั่งซื้อผ่าน LINE / Inbox",
-                    btnLink: btnLink || "https://line.me",
-                    img: imageSrc
+                    badge: badge || 'New ✨',
+                    btnText: btnText || 'สั่งซื้อผ่าน LINE / Inbox',
+                    btnLink: btnLink || 'https://line.me',
+                    img: img || "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=500&q=80",
+                    desc
                 };
-                products.unshift(newProduct);
+                products.unshift(newProd);
+                showToast("เพิ่มสินค้าใหม่สำเร็จ! 📦");
             }
             localStorage.setItem('miori_products', JSON.stringify(products));
             renderProducts();
             renderAdminProductsList();
             resetProductForm();
-            showToast("บันทึกข้อมูลสินค้าเรียบร้อย! 📦");
         }
         function renderAdminProductsList() {
             const list = document.getElementById('admin-products-list');
+            if (!list) return;
             list.innerHTML = '';
             products.forEach(p => {
-                const catObj = categories.find(c => c.id === p.category);
-                const catName = catObj ? catObj.name : p.category;
-                const item = document.createElement('div');
-                item.className = "bg-warm-cream p-3 rounded-2xl border border-soft-blush flex items-center justify-between gap-3";
-                item.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <img src="${p.img}" class="w-12 h-12 rounded-xl object-cover border border-soft-brown/10">
-                        <div>
-                            <h5 class="font-bold text-xs text-soft-brown line-clamp-1">${p.name}</h5>
-                            <span class="text-[10px] text-muted-brown">฿${p.price} | หมวด: ${catName}</span>
+                list.innerHTML += `
+                    <div class="bg-warm-cream p-3 rounded-2xl border border-soft-blush flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${p.img}" class="w-12 h-12 object-cover rounded-xl border border-soft-blush" onerror="this.src='https://placehold.co/100x100'">
+                            <div>
+                                <h4 class="font-bold text-xs text-soft-brown line-clamp-1">${p.name}</h4>
+                                <span class="text-[10px] text-muted-brown">฿${p.price} | หมวด: ${p.category}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="editProduct(${p.id})" class="px-2.5 py-1 bg-blue-50 text-blue-600 text-xs rounded-xl font-bold">แก้ไข</button>
+                            <button onclick="deleteProduct(${p.id})" class="px-2.5 py-1 bg-red-50 text-red-600 text-xs rounded-xl font-bold">ลบ</button>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="editProduct(${p.id})" class="px-3 py-1.5 bg-soft-blush text-soft-brown hover:bg-blush-dark hover:text-white rounded-xl text-xs font-bold transition-colors">แก้ไข</button>
-                        <button onclick="deleteProduct(${p.id})" class="px-3 py-1.5 bg-red-100 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-xs font-bold transition-colors">ลบ</button>
-                    </div>
                 `;
-                list.appendChild(item);
             });
         }
         function editProduct(id) {
@@ -1432,13 +1382,14 @@
             document.getElementById('admin-prod-category').value = p.category;
             document.getElementById('admin-prod-price').value = p.price;
             document.getElementById('admin-prod-badge').value = p.badge || '';
-            document.getElementById('admin-prod-desc').value = p.desc || '';
-            document.getElementById('admin-prod-btn-text').value = p.btnText || 'สั่งซื้อผ่าน LINE / Inbox';
+            document.getElementById('admin-prod-btn-text').value = p.btnText || '';
             document.getElementById('admin-prod-btn-link').value = p.btnLink || '';
+            document.getElementById('admin-prod-desc').value = p.desc || '';
+            uploadedProductImageTemp = p.img;
             const preview = document.getElementById('admin-prod-img-preview');
             preview.src = p.img;
             preview.classList.remove('hidden');
-            document.getElementById('admin-prod-form-title').innerHTML = `<i class="fa-solid fa-pen text-blush-dark"></i> <span>แก้ไขสินค้า: ${p.name}</span>`;
+            document.getElementById('admin-prod-form-title').innerHTML = '<i class="fa-solid fa-pen text-blush-dark"></i> <span>แก้ไขข้อมูลสินค้า</span>';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         function deleteProduct(id) {
@@ -1447,16 +1398,46 @@
                 localStorage.setItem('miori_products', JSON.stringify(products));
                 renderProducts();
                 renderAdminProductsList();
-                showToast("ลบสินค้าเรียบร้อยแล้ว");
+                showToast("ลบสินค้าเรียบร้อย");
             }
         }
         function resetProductForm() {
             document.getElementById('admin-prod-id').value = '';
             document.querySelector('#admin-sub-products form').reset();
             document.getElementById('admin-prod-img-preview').classList.add('hidden');
-            document.getElementById('admin-prod-form-title').innerHTML = `<i class="fa-solid fa-plus-circle text-blush-dark"></i> <span>เพิ่มสินค้าชิ้นใหม่</span>`;
+            uploadedProductImageTemp = '';
+            document.getElementById('admin-prod-form-title').innerHTML = '<i class="fa-solid fa-plus-circle text-blush-dark"></i> <span>เพิ่มสินค้าชิ้นใหม่</span>';
         }
-        // --- SAVE STORE INFO & SOCIAL LINKS ---
+        // --- ADMIN BANNERS & LOGO UPLOAD ---
+        function uploadSiteLogo() {
+            const fileInput = document.getElementById('admin-logo-file');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    localStorage.setItem('miori_logo', e.target.result);
+                    applyAllSavedSettings();
+                    showToast("อัปโหลดโลโก้สำเร็จ! ✨");
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                showToast("⚠️ กรุณาเลือกไฟล์รูปภาพโลโก้ก่อน");
+            }
+        }
+        function uploadBannerImage(type) {
+            const fileInput = document.getElementById(`admin-banner-${type}-file`);
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    localStorage.setItem(`miori_banner_${type}`, e.target.result);
+                    applyAllSavedSettings();
+                    showToast(`เปลี่ยนแบนเนอร์หน้า ${type} สำเร็จ! 🖼️`);
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                showToast("⚠️ กรุณาเลือกไฟล์รูปภาพแบนเนอร์ก่อน");
+            }
+        }
+        // --- ADMIN STORE INFO SAVING ---
         function handleSaveStoreInfo(e) {
             e.preventDefault();
             storeInfo.title = document.getElementById('admin-info-title').value;
@@ -1469,23 +1450,22 @@
             storeInfo.lineLink = document.getElementById('admin-info-line-link').value;
             storeInfo.musicTitle = document.getElementById('admin-music-title').value;
             storeInfo.musicUrl = document.getElementById('admin-music-url').value;
-
+            
             localStorage.setItem('miori_info', JSON.stringify(storeInfo));
             applyAllSavedSettings();
-            showToast("บันทึกข้อมูลร้านค้า & ลิงก์เรียบร้อย! 🌸");
-        }
-        // --- RESET ALL DATA ---
-        function resetAllDataToDefault() {
-            if (confirm("⚠️ คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นใช่หรือไม่? (ข้อมูลที่แก้ไขไว้ทั้งหมดจะหายไป)")) {
-                localStorage.clear();
-                location.reload();
-            }
+            showToast("บันทึกข้อมูลร้านค้าเรียบร้อย! 📝");
         }
         function resetThemeColors() {
             themeColors = { ...DEFAULT_THEME };
             localStorage.setItem('miori_theme', JSON.stringify(themeColors));
             applyAllSavedSettings();
             showToast("รีเซ็ตโทนสีเป็นค่าเริ่มต้นแล้ว");
+        }
+        function resetAllDataToDefault() {
+            if (confirm("⚠️ คุณแน่ใจหรือไม่ที่จะรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น? (ข้อมูลที่แก้ไขทั้งหมดจะหายไป)")) {
+                localStorage.clear();
+                location.reload();
+            }
         }
         // --- TOAST NOTIFICATION ---
         function showToast(msg) {
@@ -1496,13 +1476,12 @@
                 toast.classList.add('translate-y-20', 'opacity-0');
             }, 3000);
         }
-        // --- INIT ON LOAD ---
-        window.onload = function() {
+        // --- INITIAL RUN ON LOAD ---
+        window.addEventListener('DOMContentLoaded', () => {
             applyAllSavedSettings();
             renderProducts();
             renderReviews();
-            renderAdminProductsList();
-        };
+        });
     </script>
 </body>
 </html>
